@@ -115,8 +115,9 @@ class DataBunch():
         "Create a `DataBunch` from `train_ds`, `valid_ds` and maybe `test_ds` with a batch size of `bs`. Passes `**dl_kwargs` to `DataLoader()`"
         datasets = cls._init_ds(train_ds, valid_ds, test_ds)
         val_bs = ifnone(val_bs, bs)
-        dls = [DataLoader(d, b, shuffle=s, drop_last=s, num_workers=num_workers, **dl_kwargs) for d,b,s in
-               zip(datasets, (bs,val_bs,val_bs,val_bs), (True,False,False,False)) if d is not None]
+        sampler = dl_kwargs.pop('sampler', None)
+        dls = [DataLoader(d, b, shuffle=is_train and not sampler, drop_last=is_train, num_workers=num_workers, sampler=sampler(d) if sampler and is_train else None, **dl_kwargs)
+               for d,b,is_train in zip(datasets, (bs,val_bs,val_bs,val_bs), (True,False,False,False)) if d is not None]
         return cls(*dls, path=path, device=device, dl_tfms=dl_tfms, collate_fn=collate_fn, no_check=no_check)
 
     def __getattr__(self,k:int)->Any: return getattr(self.train_dl, k)
